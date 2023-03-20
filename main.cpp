@@ -34,18 +34,7 @@ int main() {
 	FluidGrid<CELLS_X, CELLS_Y>* vCurrent = new FluidGrid<CELLS_X, CELLS_Y>;
 	FluidGrid<CELLS_X, CELLS_Y>* vNext = new FluidGrid<CELLS_X, CELLS_Y>;
 
-	// std::vector<Particle> particles;
-	// for(size_t i = 0; i < 1000; i++) {
-	// 	particles.push_back(
-	// 		Particle(
-	// 			1 + rand() % (CELLS_X - 2),
-	// 			1 + rand() % (CELLS_Y - 2),
-	// 			1.f,
-	// 			2.f
-	// 		)
-	// 	);
-	// }
-	Particles particles(CELLS_X, CELLS_Y, 1000, 5);
+	Particles particles(CELLS_X, CELLS_Y, 200, 10);
 
 	LARGE_INTEGER freq;
 	QueryPerformanceFrequency(&freq); // TODO
@@ -103,6 +92,37 @@ int main() {
 		// }
 		particles.collide();
 		// </Update Particles>
+
+
+		// <Velocity Transfer>
+		for(size_t y = 0; y < CELLS_Y; y++) {
+			for(size_t x = 0; x < CELLS_X; x++) {
+				vCurrent->hor[y][x] = 0;
+				vCurrent->vert[y][x] = 0;
+			}
+		}
+
+		auto num = new size_t[CELLS_Y][CELLS_X]{};
+		for(const Particle p : particles.particles) {
+			size_t x = std::clamp<size_t>((int)p.pos[0], 0, CELLS_X - 1);
+			size_t y = std::clamp<size_t>((int)p.pos[1], 0, CELLS_Y - 1);
+
+			vCurrent->hor[y][x] += p.vel[0] * .5f;
+			vCurrent->hor[y][x + 1] += p.vel[0] * .5f;
+
+			vCurrent->vert[y][x] += p.vel[1] * .5f;
+			vCurrent->vert[y + 1][x] += p.vel[1] * .5f;
+
+			num[y][x]++;
+		}
+
+		// for(size_t y = 0; y < CELLS_Y; y++) {
+		// 	for(size_t x = 0; x < CELLS_X; x++) {
+		// 		vCurrent->hor[y][x] /= num[y][x];
+		// 		vCurrent->vert[y][x] /= num[y][x];
+		// 	}
+		// }
+		// </Velocity Transfer>
 
 
 		const size_t NUM_SMOKE_TRAILS = 10;

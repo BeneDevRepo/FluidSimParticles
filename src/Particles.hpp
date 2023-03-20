@@ -27,7 +27,7 @@ public:
 					1 + rand() % (width - 2),
 					1 + rand() % (height - 2),
 					1.f,
-					2.f
+					5.f
 				)
 			);
 		}
@@ -55,6 +55,39 @@ public:
 				p.y() = std::max<float>(p.y(), 0 + p.radius());
 				p.y() = std::min<float>(p.y(), height - p.radius());
 				p.vy() *= -1;
+			}
+		}
+
+		// constexpr auto dist = [](float x1, float y1, float x2, float y2) -> float {
+		// 	return std::sqrtf((x2-x1) * (x2-x1) + (y2-y1) * (y2-y1));
+		// };
+
+		for(size_t i = 0; i < particles.size(); i++) {
+			for(size_t j = i + 1; j < particles.size(); j++) {
+				Particle& a = particles[i];
+				Particle& b = particles[j];
+
+				if((b.pos - a.pos).mag() < a.radius() + b.radius()) {
+					bmath::vec2 ab = b.pos - a.pos;
+					ab /= ab.mag();
+
+					bmath::vec2 ba = a.pos - b.pos;
+					ba /= ba.mag();
+
+					const bmath::vec2 normA = ab * ab.dot(a.vel);
+					const bmath::vec2 tangA = a.vel - normA;
+					a.vel = -normA + tangA;
+
+					const bmath::vec2 normB = ba * ba.dot(b.vel);
+					const bmath::vec2 tangB = b.vel - normB;
+					b.vel = -normB + tangB;
+
+
+					// push apart:
+					float delta = (a.radius() + b.radius()) - (b.pos - a.pos).mag();
+					a.pos -= ab * delta;
+					b.pos -= ba * delta;
+				}
 			}
 		}
 	}
