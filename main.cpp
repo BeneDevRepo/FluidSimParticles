@@ -23,21 +23,43 @@ int main() {
 	GDIWindow win(800, 800);
 
 	const auto drawDir = [&win](const vec2& pos, const vec2& dir, const float size){
+			if(dir.x != dir.x)
+				std::cout << "Error x NaN\n";
+			if(dir.y != dir.y)
+				std::cout << "Error y NaN\n";
+			// if(std::abs(dir.x) < .0001)
+			// 	std::cout << "Error x 0\n";
+			// if(std::abs(dir.y) < .0001)
+			// 	std::cout << "Error y 0\n";
 			win.graphics.line((int)pos.x, (int)pos.y, (int)(pos.x + dir.x * size), (int)(pos.y + dir.y * size), 0xFFFFFFFF);
 			win.graphics.setPixel((int)pos.x, (int)pos.y, 0xFF0000FF);
 		};
 
 	static constexpr size_t CELLS_X = 400;
 	static constexpr size_t CELLS_Y = 400;
+	// static constexpr size_t CELLS_X = 100;
+	// static constexpr size_t CELLS_Y = 100;
 
 	// TODO: no memory leak :)
 	FluidGrid<CELLS_X, CELLS_Y>* vCurrent = new FluidGrid<CELLS_X, CELLS_Y>;
 	FluidGrid<CELLS_X, CELLS_Y>* vNext = new FluidGrid<CELLS_X, CELLS_Y>;
 
-	Particles particles(CELLS_X, CELLS_Y, 200, 10);
+
+	// Particles particles(CELLS_X, CELLS_Y, 200, 10);
+	Particles particles(CELLS_X, CELLS_Y, 20, 10);
+
+	enum class CellType : uint8_t {
+		SOLID,
+		FLUID,
+		AIR
+	};
+
+	auto cellTypes = new CellType[CELLS_Y][CELLS_X];
+
+
 
 	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq); // TODO
+	QueryPerformanceFrequency(&freq);
 
 
 	LARGE_INTEGER lastTime;
@@ -48,8 +70,10 @@ int main() {
 		vCurrent->s[0][x] = 0;
 		vCurrent->s[CELLS_Y][x] = 0;
 	}
-	for(size_t y = 0; y < CELLS_Y + 1; y++)
+	for(size_t y = 0; y < CELLS_Y + 1; y++) {
 		vCurrent->s[y][0] = 0;
+		// vCurrent->s[y][CELLS_Y] = 0;
+	}
 
 	for(size_t y = 0; y < CELLS_Y / 8; y++) {
 		for(size_t x = 0; x < CELLS_X / 8; x++) {
@@ -68,33 +92,21 @@ int main() {
 
 		std::cout << "dt: " << dt << "s\n";
 
-		// <Update Particles>
-		// for(Particle& p : particles)
-		// 	p.applyForce(0, 9.81f, dt);
+
+
+		// --- <Update Particles>
 		particles.applyForce(0, 9.81f, dt);
 
-		// for(Particle& p : particles)
-		// 	p.update(dt);
 		particles.updatePos(dt);
 
-		// for(Particle& p : particles) {
-		// 	if(p.x() - p.radius() < 0 || p.x() + p.radius() > CELLS_X) {
-		// 		p.x() = std::max<float>(p.x(), 0 + p.radius());
-		// 		p.x() = std::min<float>(p.x(), CELLS_X - p.radius());
-		// 		p.vx() *= -1;
-		// 	}
-
-		// 	if(p.y() - p.radius() < 0 || p.y() + p.radius() > CELLS_Y) {
-		// 		p.y() = std::max<float>(p.y(), 0 + p.radius());
-		// 		p.y() = std::min<float>(p.y(), CELLS_Y - p.radius());
-		// 		p.vy() *= -1;
-		// 	}
-		// }
 		particles.collide();
-		// </Update Particles>
+		// --- </Update Particles>
 
 
-		// <Velocity Transfer>
+
+		// --- <Velocity Transfer>
+
+		// Reset Velocity:
 		for(size_t y = 0; y < CELLS_Y; y++) {
 			for(size_t x = 0; x < CELLS_X; x++) {
 				vCurrent->hor[y][x] = 0;
@@ -102,18 +114,47 @@ int main() {
 			}
 		}
 
-		auto num = new size_t[CELLS_Y][CELLS_X]{};
+		// Set Cell types:
+		for(size_t y = 0; y < CELLS_Y; y++) {
+			for(size_t x = 0; x < CELLS_X; x++) {
+				cellTypes[y][x] = vCurrent->s[y][x] == 0 ? CellType::SOLID : CellType::AIR;
+			}
+		}
+
 		for(const Particle p : particles.particles) {
-			size_t x = std::clamp<size_t>((int)p.pos[0], 0, CELLS_X - 1);
-			size_t y = std::clamp<size_t>((int)p.pos[1], 0, CELLS_Y - 1);
+			size_t x = std::clamp<size_t>((int)p.pos[0], 1, CELLS_X - 2);
+			size_t y = std::clamp<size_t>((int)p.pos[1], 1, CELLS_Y - 2);
+			// size_t x = (size_t)p.pos[0];
+			// size_t y = (size_t)p.pos[1];
+
+			cellTypes[y][x] = CellType::FLUID;
+		}
+
+		// auto num = new size_t[CELLS_Y][CELLS_X]{};
+		// for(const Particle p : particles.particles) {
+		// 	size_t x = std::clamp<size_t>((int)p.pos[0], 0, CELLS_X - 1);
+		// 	size_t y = std::clamp<size_t>((int)p.pos[1], 0, CELLS_Y - 1);
+
+		// 	num[y][x]++;
+		// }
+
+
+		for(const Particle p : particles.particles) {
+			size_t x = std::clamp<size_t>((int)p.pos[0], 1, CELLS_X - 2);
+			size_t y = std::clamp<size_t>((int)p.pos[1], 1, CELLS_Y - 2);
+			// size_t x = std::clamp<size_t>((int)p.pos[0], 2, CELLS_X - 3);
+			// size_t y = std::clamp<size_t>((int)p.pos[1], 2, CELLS_Y - 3);
+
+			if(p.vel[0] != p.vel[0])
+				continue;
+			if(p.vel[1] != p.vel[1])
+				continue;
 
 			vCurrent->hor[y][x] += p.vel[0] * .5f;
 			vCurrent->hor[y][x + 1] += p.vel[0] * .5f;
 
 			vCurrent->vert[y][x] += p.vel[1] * .5f;
 			vCurrent->vert[y + 1][x] += p.vel[1] * .5f;
-
-			num[y][x]++;
 		}
 
 		// for(size_t y = 0; y < CELLS_Y; y++) {
@@ -122,7 +163,7 @@ int main() {
 		// 		vCurrent->vert[y][x] /= num[y][x];
 		// 	}
 		// }
-		// </Velocity Transfer>
+		// --- </Velocity Transfer>
 
 
 		const size_t NUM_SMOKE_TRAILS = 10;
@@ -144,9 +185,9 @@ int main() {
 		// for(size_t i = 0; i < iter; i++)
 		// 	FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt / iter);
 
-		vCurrent->extrapolate();
+		vCurrent->extrapolate(); // set border cells equal to neighboring cells
 
-		FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt);
+		// FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt);
 
 		FluidGrid<CELLS_X, CELLS_Y>::updateSmoke(*vCurrent, *vNext, dt);
 
@@ -154,26 +195,46 @@ int main() {
 		// --- graphics:
 		for(size_t y = 0; y < win.height; y++) {
 			for(size_t x = 0; x < win.width; x++) {
-				const size_t cellX = x * (CELLS_X + 1) / win.width;
-				const size_t cellY = y * (CELLS_Y + 1) / win.height;
+				// const size_t cellX = x * (CELLS_X + 1) / win.width;
+				// const size_t cellY = y * (CELLS_Y + 1) / win.height;
+				const size_t cellX = x * CELLS_X / win.width;
+				const size_t cellY = y * CELLS_Y / win.height;
 
-				static constexpr auto clamp = [](float v, float min, float max){
-						return (v < min) ? min : (v > max) ? max : v;
-					};
+				// static constexpr auto clamp = [](float v, float min, float max){
+				// 		return (v < min) ? min : (v > max) ? max : v;
+				// 	};
 
 				const float wall = vCurrent->s[cellY][cellX];
 
-				const float smoke = 1.f - clamp(vCurrent->sample(Field::SMOKE, cellX, cellY), 0.f, 1.f);
+				// const float smoke = 1.f - clamp(vCurrent->sample(Field::SMOKE, cellX, cellY), 0.f, 1.f);
+				const float smoke = 1.f - std::clamp<float>(vCurrent->sample(Field::SMOKE, cellX, cellY), 0.f, 1.f);
 
-				const uint8_t vX = smoke * wall * (clamp(vCurrent->sample(Field::VEL_X, cellX, cellY) * .01f, -.5f, .5f) * 255 + 128);
-				const uint8_t vY = smoke * wall * (clamp(vCurrent->sample(Field::VEL_Y, cellX, cellY) * .01f, -.5f, .5f) * 255 + 128);
+				// const uint8_t vX = smoke * wall * (clamp(vCurrent->sample(Field::VEL_X, cellX, cellY) * .01f, -.5f, .5f) * 255 + 128);
+				// const uint8_t vY = smoke * wall * (clamp(vCurrent->sample(Field::VEL_Y, cellX, cellY) * .01f, -.5f, .5f) * 255 + 128);
+				const uint8_t vX = smoke * wall * (std::clamp<float>(vCurrent->sample(Field::VEL_X, cellX, cellY) * .01f, -.5f, .5f) * 255 + 128);
+				const uint8_t vY = smoke * wall * (std::clamp<float>(vCurrent->sample(Field::VEL_Y, cellX, cellY) * .01f, -.5f, .5f) * 255 + 128);
 
 				win.graphics.setPixel(x, y,
 					0xFF << 24
 					| vX << 16
 					| vY << 8
 				);
-				// win.graphics.setPixel(x, y, (x % 100 < 50) ? 0xFF00FF00 : 0xFFFF0000);
+
+				// Color based on cell type:
+				// CellType type = cellTypes[cellY][cellX];
+				// uint32_t color = 0;
+				// switch(type) {
+				// 	case CellType::AIR:
+				// 		color = 0xFF00FF00;
+				// 		break;
+				// 	case CellType::FLUID:
+				// 		color = 0xFF0000FF;
+				// 		break;
+				// 	case CellType::SOLID:
+				// 		color = 0xFF000000;
+				// 		break;
+				// }
+				// win.graphics.setPixel(x, y, color);
 			}
 		}
 
@@ -226,14 +287,18 @@ int main() {
 
 		for(const Particle p : particles.particles)
 			win.graphics.fillCircle(
-				(int)p.x() * win.graphics.width / CELLS_X,
-				(int)p.y() * win.graphics.height / CELLS_Y,
-				(int)p.radius() * win.graphics.width / CELLS_X,
+				(int)(p.x() * win.graphics.width / CELLS_X),
+				(int)(p.y() * win.graphics.height / CELLS_Y),
+				(int)(p.radius() * win.graphics.width / CELLS_X),
 				0xFFFF0000);
 
 		win.updateScreen();
 
 		win.pollMsg();
+
+		while(GetAsyncKeyState(' ') & 0x8000);
+
+		Sleep(20);
 	}
 
 	return 0;

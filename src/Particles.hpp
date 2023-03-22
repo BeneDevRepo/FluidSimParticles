@@ -24,10 +24,10 @@ public:
 		for(size_t i = 0; i < 1000; i++) {
 			particles.push_back(
 				Particle(
-					1 + rand() % (width - 2),
-					1 + rand() % (height - 2),
+					1 + rand() * 1.f * (width - 2) / RAND_MAX,
+					1 + rand() * 1.f * (height - 2) / RAND_MAX,
 					1.f,
-					5.f
+					2.f
 				)
 			);
 		}

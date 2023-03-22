@@ -82,8 +82,10 @@ struct FluidGrid {
 		const float h1 = 1.f / h;
 		const float h2 = .5f * h;
 
-		x = std::max<float>(std::min<float>(x, NUM_CELLS_X + 1), 1);
-		y = std::max<float>(std::min<float>(y, NUM_CELLS_Y + 1), 1);
+		// x = std::max<float>(std::min<float>(x, NUM_CELLS_X + 1), 1);
+		// y = std::max<float>(std::min<float>(y, NUM_CELLS_Y + 1), 1);
+		x = std::clamp<float>(x, 1, NUM_CELLS_X - 2);
+		y = std::clamp<float>(y, 1, NUM_CELLS_Y - 2);
 
 		float dx = 0.f;
 		float dy = 0.f;

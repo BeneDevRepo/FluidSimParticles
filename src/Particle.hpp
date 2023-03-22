@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include "modules/BMath/vector.h"
+#include "BMath/vector.h"
 
 
 class Particle {
