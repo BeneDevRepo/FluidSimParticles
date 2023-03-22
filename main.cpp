@@ -23,14 +23,6 @@ int main() {
 	GDIWindow win(800, 800);
 
 	const auto drawDir = [&win](const vec2& pos, const vec2& dir, const float size){
-			if(dir.x != dir.x)
-				std::cout << "Error x NaN\n";
-			if(dir.y != dir.y)
-				std::cout << "Error y NaN\n";
-			// if(std::abs(dir.x) < .0001)
-			// 	std::cout << "Error x 0\n";
-			// if(std::abs(dir.y) < .0001)
-			// 	std::cout << "Error y 0\n";
 			win.graphics.line((int)pos.x, (int)pos.y, (int)(pos.x + dir.x * size), (int)(pos.y + dir.y * size), 0xFFFFFFFF);
 			win.graphics.setPixel((int)pos.x, (int)pos.y, 0xFF0000FF);
 		};
@@ -144,11 +136,6 @@ int main() {
 			size_t y = std::clamp<size_t>((int)p.pos[1], 1, CELLS_Y - 2);
 			// size_t x = std::clamp<size_t>((int)p.pos[0], 2, CELLS_X - 3);
 			// size_t y = std::clamp<size_t>((int)p.pos[1], 2, CELLS_Y - 3);
-
-			if(p.vel[0] != p.vel[0])
-				continue;
-			if(p.vel[1] != p.vel[1])
-				continue;
 
 			vCurrent->hor[y][x] += p.vel[0] * .5f;
 			vCurrent->hor[y][x + 1] += p.vel[0] * .5f;

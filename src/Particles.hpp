@@ -67,6 +67,10 @@ public:
 				Particle& a = particles[i];
 				Particle& b = particles[j];
 
+				// prevent division 0/0 (And thereby NaN epidemic):
+				if(a.pos[0] == b.pos[0] && a.pos[1] == b.pos[1])
+					continue;
+
 				if((b.pos - a.pos).mag() < a.radius() + b.radius()) {
 					bmath::vec2 ab = b.pos - a.pos;
 					ab /= ab.mag();
