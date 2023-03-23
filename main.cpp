@@ -29,8 +29,6 @@ int main() {
 			win.graphics.setPixel((int)pos.x, (int)pos.y, 0xFF0000FF);
 		};
 
-	// static constexpr size_t CELLS_X = 400;
-	// static constexpr size_t CELLS_Y = 400;
 	static constexpr size_t CELLS_X = 100;
 	static constexpr size_t CELLS_Y = 100;
 
@@ -39,7 +37,7 @@ int main() {
 	FluidGrid<CELLS_X, CELLS_Y>* vNext = new FluidGrid<CELLS_X, CELLS_Y>;
 
 
-	Particles particles(CELLS_X, CELLS_Y, 200, 10);
+	Particles particles(CELLS_X, CELLS_Y, 2000, 10);
 	// Particles particles(CELLS_X, CELLS_Y, 20, 10);
 
 	enum class CellType : uint8_t {
@@ -60,21 +58,7 @@ int main() {
 	QueryPerformanceCounter(&lastTime);
 
 
-	for(size_t x = 0; x < CELLS_X + 1; x++) {
-		vCurrent->s[0][x] = 0;
-		vCurrent->s[CELLS_Y][x] = 0;
-	}
-	for(size_t y = 0; y < CELLS_Y + 1; y++) {
-		vCurrent->s[y][0] = 0;
-		// vCurrent->s[y][CELLS_Y] = 0;
-	}
-
-	for(size_t y = 0; y < CELLS_Y / 8; y++) {
-		for(size_t x = 0; x < CELLS_X / 8; x++) {
-			vCurrent->s[CELLS_Y / 3 * 1 + y][CELLS_X / 5 + x] = 0;
-			vCurrent->s[CELLS_Y / 3 * 2 - y][CELLS_X / 5 + x] = 0;
-		}
-	}
+	
 
 	// float density = 1000.f;
 	while(!win.shouldClose()) {
@@ -88,8 +72,28 @@ int main() {
 
 
 
+
+		// --- <Setup static Walls>
+		for(size_t x = 0; x < CELLS_X + 1; x++) {
+			vCurrent->s[0][x] = 0;
+			vCurrent->s[CELLS_Y][x] = 0;
+		}
+		for(size_t y = 0; y < CELLS_Y + 1; y++) {
+			vCurrent->s[y][0] = 0;
+			// vCurrent->s[y][CELLS_Y] = 0;
+		}
+
+		for(size_t y = 0; y < CELLS_Y / 8; y++) {
+			for(size_t x = 0; x < CELLS_X / 8; x++) {
+				vCurrent->s[CELLS_Y / 3 * 1 + y][CELLS_X / 5 + x] = 0;
+				vCurrent->s[CELLS_Y / 3 * 2 - y][CELLS_X / 5 + x] = 0;
+			}
+		}
+		// --- </Setup static Walls>
+
+
+
 		// --- <Update Particles>
-		
 		particles.applyForce(0, 9.81f, dt);
 
 		particles.updatePos(dt);
@@ -225,10 +229,18 @@ int main() {
 		// --- </Mouse Interaction>
 
 		for(Particle& particle : particles.particles) {
-			// particle.vel[0] = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
-			// particle.vel[1] = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
-			particle.vel[0] += vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]) - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
-			particle.vel[1] += vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]) - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+			const float picX = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+			const float picY = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+
+			const float flipX = particle.vel[0] + picX - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+			const float flipY = particle.vel[1] + picY - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+
+			// particle.vel[0] = picX;
+			// particle.vel[1] = picX;
+			particle.vel[0] = flipX;
+			particle.vel[1] = flipY;
+			// particle.vel[0] = picX * .1f + flipX * .9f;
+			// particle.vel[1] = picX * .1f + flipY * .9f;
 		}
 
 

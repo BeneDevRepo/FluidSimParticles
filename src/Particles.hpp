@@ -2,6 +2,7 @@
 
 
 #include <algorithm>
+#include <unordered_map>
 #include <vector>
 
 #include "Particle.hpp"
@@ -21,7 +22,7 @@ public:
 			width(width),
 			height(height),
 			CELL_SIZE(CELL_SIZE) {
-		for(size_t i = 0; i < 1000; i++) {
+		for(size_t i = 0; i < NUM_PARTICLES; i++) {
 			particles.push_back(
 				Particle(
 					1 + rand() * 1.f * (width - 2) / RAND_MAX,
@@ -58,14 +59,45 @@ public:
 			}
 		}
 
+		std::unordered_map<uint64_t, std::vector<Particle*>> map;
+		const auto ind = [this](const bmath::vec2& pos)
+			-> uint64_t {
+				return 
+					((uint64_t)std::clamp<float>(pos[0], 0, width) << 32) |
+					((uint64_t)std::clamp<float>(pos[1], 0, height));
+			};
+
+		for(Particle& p : particles)
+			map[ind(p.pos)].push_back(&p);
+
 		// constexpr auto dist = [](float x1, float y1, float x2, float y2) -> float {
 		// 	return std::sqrtf((x2-x1) * (x2-x1) + (y2-y1) * (y2-y1));
 		// };
 
 		for(size_t i = 0; i < particles.size(); i++) {
+			Particle& a = particles[i];
+
+			// std::vector<Particle*> bpList;
+
+			// for(size_t y = -2; y <= 2; y++) {
+			// 	for(size_t x = -2; x <= 2; x++) {
+			// 		const bmath::vec2 off(x, y);
+
+			// 		const uint64_t index = ind(a.pos + off);
+
+			// 		if(map.find(index) == map.end())
+			// 			continue;
+
+			// 		for(Particle *bp : map[index])
+			// 			if(bp != &a)
+			// 				bpList.push_back(bp);
+			// 	}
+			// }
+			
 			for(size_t j = i + 1; j < particles.size(); j++) {
-				Particle& a = particles[i];
 				Particle& b = particles[j];
+			// for(Particle* bp : bpList) {
+			// 	Particle& b = *bp;
 
 				// prevent division 0/0 (And thereby NaN epidemic):
 				if(a.pos[0] == b.pos[0] && a.pos[1] == b.pos[1])
