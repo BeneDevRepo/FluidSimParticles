@@ -27,7 +27,7 @@ public:
 					1 + rand() * 1.f * (width - 2) / RAND_MAX,
 					1 + rand() * 1.f * (height - 2) / RAND_MAX,
 					1.f,
-					2.f
+					.5f
 				)
 			);
 		}

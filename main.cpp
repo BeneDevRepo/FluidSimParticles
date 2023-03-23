@@ -29,10 +29,10 @@ int main() {
 			win.graphics.setPixel((int)pos.x, (int)pos.y, 0xFF0000FF);
 		};
 
-	static constexpr size_t CELLS_X = 400;
-	static constexpr size_t CELLS_Y = 400;
-	// static constexpr size_t CELLS_X = 100;
-	// static constexpr size_t CELLS_Y = 100;
+	// static constexpr size_t CELLS_X = 400;
+	// static constexpr size_t CELLS_Y = 400;
+	static constexpr size_t CELLS_X = 100;
+	static constexpr size_t CELLS_Y = 100;
 
 	// TODO: no memory leak :)
 	FluidGrid<CELLS_X, CELLS_Y>* vCurrent = new FluidGrid<CELLS_X, CELLS_Y>;
@@ -156,6 +156,40 @@ int main() {
 		// --- </Velocity Transfer>
 
 
+
+
+		const size_t NUM_SMOKE_TRAILS = 10;
+		for(size_t y = CELLS_Y / NUM_SMOKE_TRAILS / 2; y < CELLS_Y; y += CELLS_Y / NUM_SMOKE_TRAILS)
+			vCurrent->smoke[y][0] = 3.f;
+
+		// for(size_t y = 1; y < CELLS_Y - 3; y++)
+		// 	vCurrent->hor[y][1] = 30;
+		// for(size_t y = 1; y < CELLS_Y - 2; y++)
+		// 	vCurrent->vert[y][1] = 0;
+
+		// vCurrent->hor[54][5] = 50;
+
+		// vCurrent->addVel(0, 9.81f);
+
+		for(size_t y = 0; y < CELLS_Y; y++) {
+			for(size_t x = 0; x < CELLS_X; x++) {
+				vNext->hor[y][x] = vCurrent->hor[y][x];
+				vNext->vert[y][x] = vCurrent->vert[y][x];
+			}
+		}
+
+		vCurrent->solveDivergence(10, 1.9f);
+
+		// const size_t iter = 1;
+		// for(size_t i = 0; i < iter; i++)
+		// 	FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt / iter);
+
+		vCurrent->extrapolate(); // set border cells equal to neighboring cells
+
+		// FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt);
+
+		FluidGrid<CELLS_X, CELLS_Y>::updateSmoke(*vCurrent, *vNext, dt);
+
 		// --- <Mouse Interaction>
 		if(GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
 			bmath::vec2 mouseProj(
@@ -177,52 +211,25 @@ int main() {
 			// }
 			for(size_t y = 0; y < CELLS_Y; y++) {
 				for(size_t x = 0; x < CELLS_X; x++) {
+					vCurrent->s[y][x] = 1.f;
+
 					if((bmath::vec2(x, y) - mouseProj).mag() > radProj)
 						continue;
 					
-					vCurrent->hor[y][x] += (win.win.mouseX - pmouseX) * 1.f * CELLS_X / win.win.width / dt;
-					vCurrent->vert[y][x] += (win.win.mouseX - pmouseX) * 1.f * CELLS_X / win.win.width / dt;
+					vCurrent->hor[y][x] += (win.win.mouseX - pmouseX) * 1.f * CELLS_X / win.win.width / dt * .5f;
+					vCurrent->vert[y][x] += (win.win.mouseY - pmouseY) * 1.f * CELLS_Y / win.win.height / dt * .5f;
+					vCurrent->s[y][x] = 0.f;
 				}
 			}
 		}
 		// --- </Mouse Interaction>
 
-
-		const size_t NUM_SMOKE_TRAILS = 10;
-		for(size_t y = CELLS_Y / NUM_SMOKE_TRAILS / 2; y < CELLS_Y; y += CELLS_Y / NUM_SMOKE_TRAILS)
-			vCurrent->smoke[y][0] = 3.f;
-
-		for(size_t y = 1; y < CELLS_Y - 3; y++)
-			vCurrent->hor[y][1] = 30;
-		// for(size_t y = 1; y < CELLS_Y - 2; y++)
-		// 	vCurrent->vert[y][1] = 0;
-
-		// vCurrent->hor[54][5] = 50;
-
-		// vCurrent->addVel(0, 9.81f);
-
-		vCurrent->solveDivergence(10, 1.9f);
-
-		// const size_t iter = 1;
-		// for(size_t i = 0; i < iter; i++)
-		// 	FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt / iter);
-
-		vCurrent->extrapolate(); // set border cells equal to neighboring cells
-
-		// FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt);
-
-		FluidGrid<CELLS_X, CELLS_Y>::updateSmoke(*vCurrent, *vNext, dt);
-
-
-
-		// --- <velocity backtransfer>
 		for(Particle& particle : particles.particles) {
-			const float posX = particle.x();
-			const float posY = particle.y();
-			particle.vel[0] = vCurrent->sample(Field::VEL_X, posX, posY);
-			particle.vel[1] = vCurrent->sample(Field::VEL_Y, posX, posY);
+			// particle.vel[0] = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+			// particle.vel[1] = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+			particle.vel[0] += vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]) - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+			particle.vel[1] += vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]) - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
 		}
-		// --- </velocity backtransfer>
 
 
 		// --- graphics:
