@@ -6,19 +6,19 @@
 
 class Particle {
 private:
-	const float mass;
+	const float mass_;
 	const float radius_;
 
 public:
 	bmath::vec2 pos, vel;
 
 public:
-	inline Particle(const float x_, const float y_, const float mass, const float radius_):
-		pos(x_, y_), mass(mass), radius_(radius_), vel(0, 0) { }
+	inline Particle(const float x_, const float y_, const float mass_, const float radius_):
+		pos(x_, y_), mass_(mass_), radius_(radius_), vel(0, 0) { }
 
 public:
 	inline void applyForce(const float fx, const float fy, const float dt) {
-		const bmath::vec2 acc(fx / mass, fy / mass);
+		const bmath::vec2 acc(fx / mass_, fy / mass_);
 		vel += acc * dt;
 	}
 
@@ -61,5 +61,9 @@ public:
 
 	inline float radius() const {
 		return radius_;
+	}
+
+	inline float mass() const {
+		return mass_;
 	}
 };

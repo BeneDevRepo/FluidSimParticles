@@ -22,6 +22,8 @@
 int main() {
 	GDIWindow win(800, 800);
 
+	int32_t pmouseX = 0, pmouseY = 0;
+
 	const auto drawDir = [&win](const vec2& pos, const vec2& dir, const float size){
 			win.graphics.line((int)pos.x, (int)pos.y, (int)(pos.x + dir.x * size), (int)(pos.y + dir.y * size), 0xFFFFFFFF);
 			win.graphics.setPixel((int)pos.x, (int)pos.y, 0xFF0000FF);
@@ -37,8 +39,8 @@ int main() {
 	FluidGrid<CELLS_X, CELLS_Y>* vNext = new FluidGrid<CELLS_X, CELLS_Y>;
 
 
-	// Particles particles(CELLS_X, CELLS_Y, 200, 10);
-	Particles particles(CELLS_X, CELLS_Y, 20, 10);
+	Particles particles(CELLS_X, CELLS_Y, 200, 10);
+	// Particles particles(CELLS_X, CELLS_Y, 20, 10);
 
 	enum class CellType : uint8_t {
 		SOLID,
@@ -87,6 +89,7 @@ int main() {
 
 
 		// --- <Update Particles>
+		
 		particles.applyForce(0, 9.81f, dt);
 
 		particles.updatePos(dt);
@@ -153,6 +156,38 @@ int main() {
 		// --- </Velocity Transfer>
 
 
+		// --- <Mouse Interaction>
+		if(GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
+			bmath::vec2 mouseProj(
+				win.win.mouseX * 1.f * CELLS_X / win.win.width,
+				win.win.mouseY * 1.f * CELLS_Y / win.win.height);
+
+			const float radProj = 50.f * CELLS_X / win.win.width;
+			// for(Particle& particle : particles.particles) {
+			// 	if((particle.pos - mouseProj).mag() > radProj)
+			// 		continue;
+				
+			// 	particle.applyForce(
+			// 		(win.win.mouseX - pmouseX) * 1.f * CELLS_X / win.win.width * particle.mass() / dt,
+			// 		(win.win.mouseY - pmouseY) * 1.f * CELLS_Y / win.win.height * particle.mass() / dt,
+			// 		// (win.win.mouseX - pmouseX) * particle.mass() / dt,
+			// 		// (win.win.mouseY - pmouseY) * particle.mass() / dt,
+			// 		dt
+			// 	);
+			// }
+			for(size_t y = 0; y < CELLS_Y; y++) {
+				for(size_t x = 0; x < CELLS_X; x++) {
+					if((bmath::vec2(x, y) - mouseProj).mag() > radProj)
+						continue;
+					
+					vCurrent->hor[y][x] += (win.win.mouseX - pmouseX) * 1.f * CELLS_X / win.win.width / dt;
+					vCurrent->vert[y][x] += (win.win.mouseX - pmouseX) * 1.f * CELLS_X / win.win.width / dt;
+				}
+			}
+		}
+		// --- </Mouse Interaction>
+
+
 		const size_t NUM_SMOKE_TRAILS = 10;
 		for(size_t y = CELLS_Y / NUM_SMOKE_TRAILS / 2; y < CELLS_Y; y += CELLS_Y / NUM_SMOKE_TRAILS)
 			vCurrent->smoke[y][0] = 3.f;
@@ -177,6 +212,17 @@ int main() {
 		// FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt);
 
 		FluidGrid<CELLS_X, CELLS_Y>::updateSmoke(*vCurrent, *vNext, dt);
+
+
+
+		// --- <velocity backtransfer>
+		for(Particle& particle : particles.particles) {
+			const float posX = particle.x();
+			const float posY = particle.y();
+			particle.vel[0] = vCurrent->sample(Field::VEL_X, posX, posY);
+			particle.vel[1] = vCurrent->sample(Field::VEL_Y, posX, posY);
+		}
+		// --- </velocity backtransfer>
 
 
 		// --- graphics:
@@ -281,11 +327,14 @@ int main() {
 
 		win.updateScreen();
 
+		pmouseX = win.win.mouseX;
+		pmouseY = win.win.mouseY;
+
 		win.pollMsg();
 
-		while(GetAsyncKeyState(' ') & 0x8000);
+		// while(GetAsyncKeyState(' ') & 0x8000);
 
-		Sleep(20);
+		// Sleep(20);
 	}
 
 	return 0;
