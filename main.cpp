@@ -74,6 +74,12 @@ int main() {
 
 
 		// --- <Setup static Walls>
+		for(size_t y = 0; y < CELLS_Y; y++) {
+			for(size_t x = 0; x < CELLS_X; x++) {
+				vCurrent->s[y][x] = 1.f;
+			}
+		}
+
 		for(size_t x = 0; x < CELLS_X + 1; x++) {
 			vCurrent->s[0][x] = 0;
 			vCurrent->s[CELLS_Y][x] = 0;
@@ -96,9 +102,16 @@ int main() {
 		// --- <Update Particles>
 		particles.applyForce(0, 9.81f, dt);
 
-		particles.updatePos(dt);
+		// particles.updatePos(dt);
 
-		particles.collide();
+		// particles.collide();
+
+		constexpr size_t PARTICLE_ITERS = 10;
+		for(size_t i = 0; i < PARTICLE_ITERS; i++) {
+			particles.updatePos(dt / PARTICLE_ITERS);
+
+			particles.collide();
+		}
 		// --- </Update Particles>
 
 
@@ -139,16 +152,46 @@ int main() {
 
 
 		for(const Particle p : particles.particles) {
-			size_t x = std::clamp<size_t>((int)p.pos[0], 1, CELLS_X - 2);
-			size_t y = std::clamp<size_t>((int)p.pos[1], 1, CELLS_Y - 2);
+			size_t xBase = std::clamp<int>((int)p.pos[0], 1, CELLS_X - 2);
+			size_t yBase = std::clamp<int>((int)p.pos[1], 1, CELLS_Y - 2);
 			// size_t x = std::clamp<size_t>((int)p.pos[0], 2, CELLS_X - 3);
 			// size_t y = std::clamp<size_t>((int)p.pos[1], 2, CELLS_Y - 3);
 
-			vCurrent->hor[y][x] += p.vel[0] * .5f;
-			vCurrent->hor[y][x + 1] += p.vel[0] * .5f;
+			float xRem = p.pos[0] - xBase;
+			float yRem = p.pos[1] - yBase;
 
-			vCurrent->vert[y][x] += p.vel[1] * .5f;
-			vCurrent->vert[y + 1][x] += p.vel[1] * .5f;
+			// horizontal velocity:
+			// vCurrent->hor[yBase][xBase    ] += p.vel[0] * .5f;
+			// vCurrent->hor[yBase][xBase + 1] += p.vel[0] * .5f;
+			{
+				const size_t xBase = std::clamp<int>((int)p.pos[0], 1, CELLS_X - 2);
+				const size_t yBase = std::clamp<int>((int)p.pos[1] - .5f, 1, CELLS_Y - 2);
+
+				const float xRem = p.pos[0] - xBase;
+				const float yRem = std::max<float>((p.pos[1] - .5f) - yBase, 0.f);
+
+				vCurrent->hor[yBase    ][xBase    ] += p.vel[0] * (1.f - xRem) * (1.f - yRem);
+				vCurrent->hor[yBase    ][xBase + 1] += p.vel[0] * (      xRem) * (1.f - yRem);
+				vCurrent->hor[yBase + 1][xBase    ] += p.vel[0] * (1.f - xRem) * (      yRem);
+				vCurrent->hor[yBase + 1][xBase + 1] += p.vel[0] * (      xRem) * (      yRem);
+			}
+
+
+			// vertical velocity:
+			// vCurrent->vert[yBase    ][xBase] += p.vel[1] * .5f;
+			// vCurrent->vert[yBase + 1][xBase] += p.vel[1] * .5f;
+			{
+				const size_t xBase = std::clamp<int>((int)p.pos[0] - .5f, 1, CELLS_X - 2);
+				const size_t yBase = std::clamp<int>((int)p.pos[1], 1, CELLS_Y - 2);
+
+				const float xRem = std::max<float>((p.pos[0] - .5f) - xBase, 0.f);
+				const float yRem = p.pos[1] - yBase;
+
+				vCurrent->vert[yBase    ][xBase    ] += p.vel[1] * (1.f - xRem) * (1.f - yRem);
+				vCurrent->vert[yBase    ][xBase + 1] += p.vel[1] * (      xRem) * (1.f - yRem);
+				vCurrent->vert[yBase + 1][xBase    ] += p.vel[1] * (1.f - xRem) * (      yRem);
+				vCurrent->vert[yBase + 1][xBase + 1] += p.vel[1] * (      xRem) * (      yRem);
+			}
 		}
 
 		// for(size_t y = 0; y < CELLS_Y; y++) {
@@ -201,21 +244,18 @@ int main() {
 				win.win.mouseY * 1.f * CELLS_Y / win.win.height);
 
 			const float radProj = 50.f * CELLS_X / win.win.width;
-			// for(Particle& particle : particles.particles) {
-			// 	if((particle.pos - mouseProj).mag() > radProj)
-			// 		continue;
+			for(Particle& particle : particles.particles) {
+				if((particle.pos - mouseProj).mag() > radProj)
+					continue;
 				
-			// 	particle.applyForce(
-			// 		(win.win.mouseX - pmouseX) * 1.f * CELLS_X / win.win.width * particle.mass() / dt,
-			// 		(win.win.mouseY - pmouseY) * 1.f * CELLS_Y / win.win.height * particle.mass() / dt,
-			// 		// (win.win.mouseX - pmouseX) * particle.mass() / dt,
-			// 		// (win.win.mouseY - pmouseY) * particle.mass() / dt,
-			// 		dt
-			// 	);
-			// }
+				particle.vel = bmath::vec2(
+					(win.win.mouseX - pmouseX) * 1.f * CELLS_X / win.win.width / dt,
+					(win.win.mouseY - pmouseY) * 1.f * CELLS_Y / win.win.height / dt
+				);
+			}
 			for(size_t y = 0; y < CELLS_Y; y++) {
 				for(size_t x = 0; x < CELLS_X; x++) {
-					vCurrent->s[y][x] = 1.f;
+					// vCurrent->s[y][x] = 1.f;
 
 					if((bmath::vec2(x, y) - mouseProj).mag() > radProj)
 						continue;
@@ -237,20 +277,20 @@ int main() {
 
 			// particle.vel[0] = picX;
 			// particle.vel[1] = picX;
-			particle.vel[0] = flipX;
-			particle.vel[1] = flipY;
-			// particle.vel[0] = picX * .1f + flipX * .9f;
-			// particle.vel[1] = picX * .1f + flipY * .9f;
+			// particle.vel[0] = flipX;
+			// particle.vel[1] = flipY;
+			particle.vel[0] = picX * .1f + flipX * .9f;
+			particle.vel[1] = picY * .1f + flipY * .9f;
 		}
 
 
 		// --- graphics:
 		for(size_t y = 0; y < win.height; y++) {
 			for(size_t x = 0; x < win.width; x++) {
-				// const size_t cellX = x * (CELLS_X + 1) / win.width;
-				// const size_t cellY = y * (CELLS_Y + 1) / win.height;
-				const size_t cellX = x * CELLS_X / win.width;
-				const size_t cellY = y * CELLS_Y / win.height;
+				const size_t cellX = x * (CELLS_X + 1) / win.width;
+				const size_t cellY = y * (CELLS_Y + 1) / win.height;
+				// const size_t cellX = x * CELLS_X / win.width;
+				// const size_t cellY = y * CELLS_Y / win.height;
 
 				// static constexpr auto clamp = [](float v, float min, float max){
 				// 		return (v < min) ? min : (v > max) ? max : v;
@@ -271,22 +311,33 @@ int main() {
 					| vX << 16
 					| vY << 8
 				);
+			}
+		}
 
-				// Color based on cell type:
-				// CellType type = cellTypes[cellY][cellX];
-				// uint32_t color = 0;
-				// switch(type) {
-				// 	case CellType::AIR:
-				// 		color = 0xFF00FF00;
-				// 		break;
-				// 	case CellType::FLUID:
-				// 		color = 0xFF0000FF;
-				// 		break;
-				// 	case CellType::SOLID:
-				// 		color = 0xFF000000;
-				// 		break;
-				// }
-				// win.graphics.setPixel(x, y, color);
+
+		// -----  Color based on cell type:
+		if(GetAsyncKeyState('C') & 0x8000) {
+			for(size_t y = 0; y < win.height; y++) {
+				for(size_t x = 0; x < win.width; x++) {
+					const size_t cellX = x * (CELLS_X + 1) / win.width;
+					const size_t cellY = y * (CELLS_Y + 1) / win.height;
+					// const size_t cellX = x * CELLS_X / win.width;
+					// const size_t cellY = y * CELLS_Y / win.height;
+					CellType type = cellTypes[cellY][cellX];
+					uint32_t color = 0;
+					switch(type) {
+						case CellType::AIR:
+							color = 0xFF00FF00;
+							break;
+						case CellType::FLUID:
+							color = 0xFF0000FF;
+							break;
+						case CellType::SOLID:
+							color = 0xFF000000;
+							break;
+					}
+					win.graphics.setPixel(x, y, color);
+				}
 			}
 		}
 

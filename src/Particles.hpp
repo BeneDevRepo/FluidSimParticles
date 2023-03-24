@@ -49,35 +49,33 @@ public:
 			if(p.x() - p.radius() < 0 || p.x() + p.radius() > width) {
 				p.x() = std::max<float>(p.x(), 0 + p.radius());
 				p.x() = std::min<float>(p.x(), width - p.radius());
-				p.vx() *= -1;
+				// p.vx() *= -1;
+				p.vx() *= 0;
 			}
 
 			if(p.y() - p.radius() < 0 || p.y() + p.radius() > height) {
 				p.y() = std::max<float>(p.y(), 0 + p.radius());
 				p.y() = std::min<float>(p.y(), height - p.radius());
-				p.vy() *= -1;
+				// p.vy() *= -1;
+				p.vy() *= 0;
 			}
 		}
 
-		std::unordered_map<uint64_t, std::vector<Particle*>> map;
-		const auto ind = [this](const bmath::vec2& pos)
-			-> uint64_t {
-				return 
-					((uint64_t)std::clamp<float>(pos[0], 0, width) << 32) |
-					((uint64_t)std::clamp<float>(pos[1], 0, height));
-			};
+		// std::unordered_map<uint64_t, std::vector<Particle*>> map;
+		// const auto ind = [this](const bmath::vec2& pos)
+		// 	-> uint64_t {
+		// 		return 
+		// 			((int64_t)pos[0] << 32) |
+		// 			((int64_t)pos[1]);
+		// 	};
 
-		for(Particle& p : particles)
-			map[ind(p.pos)].push_back(&p);
-
-		// constexpr auto dist = [](float x1, float y1, float x2, float y2) -> float {
-		// 	return std::sqrtf((x2-x1) * (x2-x1) + (y2-y1) * (y2-y1));
-		// };
+		// for(Particle& p : particles)
+		// 	map[ind(p.pos)].push_back(&p);
 
 		for(size_t i = 0; i < particles.size(); i++) {
 			Particle& a = particles[i];
 
-			// std::vector<Particle*> bpList;
+			std::vector<Particle*> bpList;
 
 			// for(size_t y = -2; y <= 2; y++) {
 			// 	for(size_t x = -2; x <= 2; x++) {
@@ -88,16 +86,21 @@ public:
 			// 		if(map.find(index) == map.end())
 			// 			continue;
 
-			// 		for(Particle *bp : map[index])
+			// 		std::vector<Particle*>& pList = map[index];
+			// 		for(Particle *bp : pList)
+			// 		// for(Particle *bp : map[index])
 			// 			if(bp != &a)
 			// 				bpList.push_back(bp);
+
+			// 		pList.clear();
 			// 	}
 			// }
 			
-			for(size_t j = i + 1; j < particles.size(); j++) {
-				Particle& b = particles[j];
 			// for(Particle* bp : bpList) {
 			// 	Particle& b = *bp;
+	
+			for(size_t j = i + 1; j < particles.size(); j++) {
+				Particle& b = particles[j];
 
 				// prevent division 0/0 (And thereby NaN epidemic):
 				if(a.pos[0] == b.pos[0] && a.pos[1] == b.pos[1])
@@ -125,6 +128,16 @@ public:
 					b.pos -= ba * delta;
 				}
 			}
+
+			// for(size_t i = 0; i < map[ind(a.pos)].size(); i++) {
+			// 	if(map[ind(a.pos)][i] == &a) {
+			// 		map[ind(a.pos)].erase(map[ind(a.pos)].begin() + i);
+			// 		break;
+			// 	}
+			// }
+
+			// for(Particle* p : bpList)
+			// 	map[ind(p->pos)].push_back(p);
 		}
 	}
 };
