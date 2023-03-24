@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "Particle.hpp"
@@ -61,71 +62,60 @@ public:
 			}
 		}
 
-		// std::unordered_map<uint64_t, std::vector<Particle*>> map;
-		// const auto ind = [this](const bmath::vec2& pos)
-		// 	-> uint64_t {
-		// 		return 
-		// 			((int64_t)pos[0] << 32) |
-		// 			((int64_t)pos[1]);
-		// 	};
+		std::unordered_map<uint64_t, std::vector<Particle*>> map;
+		const auto ind = [this](const bmath::vec2& pos)
+			-> uint64_t {
+				static constexpr float GRID_SCALE = 10.f;
+				return 
+					((int64_t)(pos[0] * GRID_SCALE) << 32) |
+					((int64_t)(pos[1] * GRID_SCALE));
+			};
 
-		// for(Particle& p : particles)
-		// 	map[ind(p.pos)].push_back(&p);
+		for(Particle& p : particles)
+			for(int32_t dy = -2; dy <= 2; dy++)
+				for(int32_t dx = -2; dx <= 2; dx++)
+					map[ind(p.pos + bmath::vec2(dx, dy))].push_back(&p);
+
+		std::vector<std::tuple<Particle*, Particle*>> collisionPairs;
+
+		std::unordered_set<Particle*> collided;
 
 		for(size_t i = 0; i < particles.size(); i++) {
 			Particle& a = particles[i];
 
-			std::vector<Particle*> bpList;
 
-			// for(size_t y = -2; y <= 2; y++) {
-			// 	for(size_t x = -2; x <= 2; x++) {
-			// 		const bmath::vec2 off(x, y);
+			// std::vector<Particle*> bpList;
 
-			// 		const uint64_t index = ind(a.pos + off);
 
-			// 		if(map.find(index) == map.end())
-			// 			continue;
+			const uint64_t index = ind(a.pos);
 
-			// 		std::vector<Particle*>& pList = map[index];
-			// 		for(Particle *bp : pList)
-			// 		// for(Particle *bp : map[index])
-			// 			if(bp != &a)
-			// 				bpList.push_back(bp);
+			if(map.find(index) == map.end())
+				continue;
 
-			// 		pList.clear();
-			// 	}
-			// }
+			// std::vector<Particle*>& pList = map[index];
+			// for(Particle *bp : pList)
+			// for(Particle *bp : map[index])
+			// 	if(bp != &a)
+			// 		bpList.push_back(bp);
+
+
 			
 			// for(Particle* bp : bpList) {
-			// 	Particle& b = *bp;
+			for(Particle* bp : map[index]) {
+				if(collided.find(bp) == collided.end())
+					continue;
+
+				Particle& b = *bp;
 	
-			for(size_t j = i + 1; j < particles.size(); j++) {
-				Particle& b = particles[j];
+			// for(size_t j = i + 1; j < particles.size(); j++) {
+			// 	Particle& b = particles[j];
 
 				// prevent division 0/0 (And thereby NaN epidemic):
 				if(a.pos[0] == b.pos[0] && a.pos[1] == b.pos[1])
 					continue;
 
 				if((b.pos - a.pos).mag() < a.radius() + b.radius()) {
-					bmath::vec2 ab = b.pos - a.pos;
-					ab /= ab.mag();
-
-					bmath::vec2 ba = a.pos - b.pos;
-					ba /= ba.mag();
-
-					const bmath::vec2 normA = ab * ab.dot(a.vel);
-					const bmath::vec2 tangA = a.vel - normA;
-					a.vel = -normA + tangA;
-
-					const bmath::vec2 normB = ba * ba.dot(b.vel);
-					const bmath::vec2 tangB = b.vel - normB;
-					b.vel = -normB + tangB;
-
-
-					// push apart:
-					float delta = (a.radius() + b.radius()) - (b.pos - a.pos).mag();
-					a.pos -= ab * delta;
-					b.pos -= ba * delta;
+					collisionPairs.push_back({&a, &b});
 				}
 			}
 
@@ -138,6 +128,33 @@ public:
 
 			// for(Particle* p : bpList)
 			// 	map[ind(p->pos)].push_back(p);
+
+			collided.insert(particles.data() + i);
+		}
+
+		for(auto [ap, bp] : collisionPairs) {
+			Particle& a = *ap;
+			Particle& b = *bp;
+
+			bmath::vec2 ab = b.pos - a.pos;
+			ab /= ab.mag();
+
+			bmath::vec2 ba = a.pos - b.pos;
+			ba /= ba.mag();
+
+			const bmath::vec2 normA = ab * ab.dot(a.vel);
+			const bmath::vec2 tangA = a.vel - normA;
+			a.vel = -normA + tangA;
+
+			const bmath::vec2 normB = ba * ba.dot(b.vel);
+			const bmath::vec2 tangB = b.vel - normB;
+			b.vel = -normB + tangB;
+
+
+			// push apart:
+			float delta = (a.radius() + b.radius()) - (b.pos - a.pos).mag();
+			a.pos -= ab * delta;
+			b.pos -= ba * delta;
 		}
 	}
 };

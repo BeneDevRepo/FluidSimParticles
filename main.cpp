@@ -102,16 +102,16 @@ int main() {
 		// --- <Update Particles>
 		particles.applyForce(0, 9.81f, dt);
 
-		// particles.updatePos(dt);
+		particles.updatePos(dt);
 
-		// particles.collide();
+		particles.collide();
 
-		constexpr size_t PARTICLE_ITERS = 10;
-		for(size_t i = 0; i < PARTICLE_ITERS; i++) {
-			particles.updatePos(dt / PARTICLE_ITERS);
+		// constexpr size_t PARTICLE_ITERS = 10;
+		// for(size_t i = 0; i < PARTICLE_ITERS; i++) {
+		// 	particles.updatePos(dt / PARTICLE_ITERS);
 
-			particles.collide();
-		}
+		// 	particles.collide();
+		// }
 		// --- </Update Particles>
 
 
