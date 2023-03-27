@@ -14,7 +14,7 @@ public:
 
 public:
 	inline Particle(const float x_, const float y_, const float mass_, const float radius_):
-		pos(x_, y_), mass_(mass_), radius_(radius_), vel(0, 0) { }
+		mass_(mass_), radius_(radius_), pos(x_, y_), vel(0, 0) { }
 
 public:
 	inline void applyForce(const float fx, const float fy, const float dt) {

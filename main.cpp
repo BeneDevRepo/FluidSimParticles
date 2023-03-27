@@ -31,14 +31,16 @@ int main() {
 
 	static constexpr size_t CELLS_X = 100;
 	static constexpr size_t CELLS_Y = 100;
+	// static constexpr size_t CELLS_X = 20;
+	// static constexpr size_t CELLS_Y = 20;
 
 	// TODO: no memory leak :)
 	FluidGrid<CELLS_X, CELLS_Y>* vCurrent = new FluidGrid<CELLS_X, CELLS_Y>;
 	FluidGrid<CELLS_X, CELLS_Y>* vNext = new FluidGrid<CELLS_X, CELLS_Y>;
 
 
-	Particles particles(CELLS_X, CELLS_Y, 2000, 10);
-	// Particles particles(CELLS_X, CELLS_Y, 20, 10);
+	Particles particles(CELLS_X, CELLS_Y, 2000);
+	// Particles particles(CELLS_X, CELLS_Y, 100);
 
 	enum class CellType : uint8_t {
 		SOLID,
@@ -65,7 +67,8 @@ int main() {
 		LARGE_INTEGER currentTime;
 		QueryPerformanceCounter(&currentTime);
 
-		const double dt = (currentTime.QuadPart - lastTime.QuadPart) * 1. / freq.QuadPart;
+		double dt = (currentTime.QuadPart - lastTime.QuadPart) * 1. / freq.QuadPart;
+		dt = std::min<double>(dt, .03);
 		lastTime = currentTime;
 
 		std::cout << "dt: " << dt << "s\n";
@@ -104,7 +107,8 @@ int main() {
 
 		particles.updatePos(dt);
 
-		particles.collide();
+		for(size_t i = 0; i < 10; i++)
+			particles.collide();
 
 		// constexpr size_t PARTICLE_ITERS = 10;
 		// for(size_t i = 0; i < PARTICLE_ITERS; i++) {
@@ -152,13 +156,13 @@ int main() {
 
 
 		for(const Particle p : particles.particles) {
-			size_t xBase = std::clamp<int>((int)p.pos[0], 1, CELLS_X - 2);
-			size_t yBase = std::clamp<int>((int)p.pos[1], 1, CELLS_Y - 2);
+			// size_t xBase = std::clamp<int>((int)p.pos[0], 1, CELLS_X - 2);
+			// size_t yBase = std::clamp<int>((int)p.pos[1], 1, CELLS_Y - 2);
 			// size_t x = std::clamp<size_t>((int)p.pos[0], 2, CELLS_X - 3);
 			// size_t y = std::clamp<size_t>((int)p.pos[1], 2, CELLS_Y - 3);
 
-			float xRem = p.pos[0] - xBase;
-			float yRem = p.pos[1] - yBase;
+			// float xRem = p.pos[0] - xBase;
+			// float yRem = p.pos[1] - yBase;
 
 			// horizontal velocity:
 			// vCurrent->hor[yBase][xBase    ] += p.vel[0] * .5f;
@@ -268,20 +272,20 @@ int main() {
 		}
 		// --- </Mouse Interaction>
 
-		for(Particle& particle : particles.particles) {
-			const float picX = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
-			const float picY = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+		// for(Particle& particle : particles.particles) {
+		// 	const float picX = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+		// 	const float picY = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
 
-			const float flipX = particle.vel[0] + picX - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
-			const float flipY = particle.vel[1] + picY - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+		// 	const float flipX = particle.vel[0] + picX - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+		// 	const float flipY = particle.vel[1] + picY - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
 
-			// particle.vel[0] = picX;
-			// particle.vel[1] = picX;
-			// particle.vel[0] = flipX;
-			// particle.vel[1] = flipY;
-			particle.vel[0] = picX * .1f + flipX * .9f;
-			particle.vel[1] = picY * .1f + flipY * .9f;
-		}
+		// 	// particle.vel[0] = picX;
+		// 	// particle.vel[1] = picX;
+		// 	// particle.vel[0] = flipX;
+		// 	// particle.vel[1] = flipY;
+		// 	particle.vel[0] = picX * .1f + flipX * .9f;
+		// 	particle.vel[1] = picY * .1f + flipY * .9f;
+		// }
 
 
 		// --- graphics:
