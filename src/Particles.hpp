@@ -8,6 +8,8 @@
 
 #include "Particle.hpp"
 
+#include "SpatialHashGrid.hpp"
+
 
 class Particles {
 public:
@@ -24,8 +26,8 @@ public:
 	Particles(const size_t width, const size_t height, const size_t NUM_PARTICLES):
 			width(width),
 			height(height),
-			// tableSize(2 * NUM_PARTICLES) {
-			tableSize(NUM_PARTICLES) {
+			tableSize(2 * NUM_PARTICLES) {
+			// tableSize(NUM_PARTICLES) {
 
 		for(size_t i = 0; i < NUM_PARTICLES; i++) {
 			particles.push_back(
@@ -145,8 +147,8 @@ public:
 	inline std::vector<std::tuple<Particle*, Particle*>> getCollisionsDenseHash() {
 		std::vector<std::tuple<Particle*, Particle*>> collisionPairs;
 
-		static const size_t maxNumObjects = particles.size();
-		// static const size_t maxNumObjects = particles.size() * 2;
+		// static const size_t maxNumObjects = particles.size();
+		static const size_t maxNumObjects = particles.size() * 2;
 
 		// static const float spacing = CELL_SIZE;
 		
@@ -217,17 +219,20 @@ public:
 					// if(start >= particles.size())
 					// 	continue;
 					for (size_t bi = start; bi < end; bi++) {
-						if(bi == ai) continue;
+						// if(bi == ai) continue;
+						// if(cellEntries[bi] == ai) continue;
 						// if(collided.find(particles.data() + bi) != collided.end()) continue;
 
-						Particle& b = particles[bi];
+						// Particle& b = particles[bi];
+						Particle& b = particles[cellEntries[bi]];
 
-						if((b.pos - a.pos).mag() < a.radius() + b.radius()) {
+						// if((b.pos - a.pos).mag() < a.radius() + b.radius()) {
 							collisionPairs.push_back({
 								particles.data() + ai,
-								particles.data() + bi
+								// particles.data() + bi
+								particles.data() + cellEntries[bi]
 							});
-						}
+						// }
 					}
 				}
 			}
@@ -257,8 +262,8 @@ public:
 		}
 
 		// std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsPrimitive();
-		std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsUnorderedMap();
-		// std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsDenseHash();
+		// std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsUnorderedMap();
+		std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsDenseHash();
 
 		// std::cout << "Num pairs collided: " << collisionPairs.size() << "\n";
 
