@@ -35,8 +35,8 @@ int main() {
 	// static constexpr size_t CELLS_Y = 20;
 
 	// TODO: no memory leak :)
+	FluidGrid<CELLS_X, CELLS_Y>* vPrev = new FluidGrid<CELLS_X, CELLS_Y>;
 	FluidGrid<CELLS_X, CELLS_Y>* vCurrent = new FluidGrid<CELLS_X, CELLS_Y>;
-	FluidGrid<CELLS_X, CELLS_Y>* vNext = new FluidGrid<CELLS_X, CELLS_Y>;
 	// float (*density)[CELLS_X] = new float[CELLS_Y][CELLS_X]{}; // density at the center of each cell
 
 
@@ -201,6 +201,8 @@ int main() {
 			}
 		}
 
+		// TODO: restore solid cells
+
 		// for(size_t y = 0; y < CELLS_Y; y++) {
 		// 	for(size_t x = 0; x < CELLS_X; x++) {
 		// 		vCurrent->hor[y][x] /= num[y][x];
@@ -227,8 +229,8 @@ int main() {
 
 		for(size_t y = 0; y < CELLS_Y; y++) {
 			for(size_t x = 0; x < CELLS_X; x++) {
-				vNext->hor[y][x] = vCurrent->hor[y][x];
-				vNext->vert[y][x] = vCurrent->vert[y][x];
+				vPrev->hor[y][x] = vCurrent->hor[y][x];
+				vPrev->vert[y][x] = vCurrent->vert[y][x];
 			}
 		}
 
@@ -242,7 +244,7 @@ int main() {
 
 		// FluidGrid<CELLS_X, CELLS_Y>::update(*vCurrent, *vNext, dt);
 
-		FluidGrid<CELLS_X, CELLS_Y>::updateSmoke(*vCurrent, *vNext, dt);
+		// FluidGrid<CELLS_X, CELLS_Y>::updateSmoke(*vCurrent, *vNext, dt);
 
 		// --- <Mouse Interaction>
 		if(GetAsyncKeyState(VK_LBUTTON) & 0x8000) {
@@ -275,31 +277,80 @@ int main() {
 		}
 		// --- </Mouse Interaction>
 
-		// --- <Transfer velicities back to particles>
+		// --- <Transfer velocities back to particles>
 		for(Particle& particle : particles.particles) {
 			// var nr0 = x0*n + y0;
 			// var nr1 = x1*n + y0;
 			// var nr2 = x1*n + y1;
 			// var nr3 = x0*n + y1;
-			// bool valid0 = cellTypes[ ] != CellType::AIR /*|| this.cellType[nr0 - offset] != AIR_CELL*/ ? 1.0 : 0.0;
-			// bool valid1 = cellTypes[nr1] != CellType::AIR /*|| this.cellType[nr1 - offset] != AIR_CELL*/ ? 1.0 : 0.0;
-			// bool valid2 = cellTypes[nr2] != CellType::AIR /*|| this.cellType[nr2 - offset] != AIR_CELL*/ ? 1.0 : 0.0;
-			// bool valid3 = cellTypes[nr3] != CellType::AIR /*|| this.cellType[nr3 - offset] != AIR_CELL*/ ? 1.0 : 0.0;
-			
-			const float picX = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
-			const float picY = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+			for(size_t component = 0; component < 2; component++) {
+				// 0 1
+				// 3 2
+				// compensate staggered grid:
+				const float dx = component==0 ? 0 : -.5f;
+				const float dy = component==0 ? -.5f : 0;
 
-			const float flipX = particle.vel[0] + picX - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
-			const float flipY = particle.vel[1] + picY - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+				const size_t x0 = std::clamp<double>(std::floorf(particle.pos[0] - dx), 1, CELLS_X - 2);
+				const size_t y0 = std::clamp<double>(std::floorf(particle.pos[1] - dy), 1, CELLS_Y - 2);
+				const size_t x1 = std::clamp<double>(x0 + 1, 1, CELLS_X - 2);
+				const size_t y1 = std::clamp<double>(y0 + 1, 1, CELLS_Y - 2);
 
-			// particle.vel[0] = picX;
-			// particle.vel[1] = picX;
-			// particle.vel[0] = flipX;
-			// particle.vel[1] = flipY;
-			particle.vel[0] = picX * .1f + flipX * .9f;
-			particle.vel[1] = picY * .1f + flipY * .9f;
+				const size_t offX = component==0 ? -1 : 0;
+				const size_t offY = component==0 ? 0 : -1;
+
+				const float valid0 = cellTypes[y0][x0] != CellType::AIR || cellTypes[y0 + offY][x0 + offX] != CellType::AIR ? 1.0 : 0.0;
+				const float valid1 = cellTypes[y0][x1] != CellType::AIR || cellTypes[y0 + offY][x1 + offX] != CellType::AIR ? 1.0 : 0.0;
+				const float valid2 = cellTypes[y1][x1] != CellType::AIR || cellTypes[y1 + offY][x1 + offX] != CellType::AIR ? 1.0 : 0.0;
+				const float valid3 = cellTypes[y1][x0] != CellType::AIR || cellTypes[y1 + offY][x0 + offX] != CellType::AIR ? 1.0 : 0.0;
+				
+				const float tx = (particle.pos[0] - dx) - x0;
+				const float ty = (particle.pos[1] - dy) - y0;
+				const float sx = 1.f - tx;
+				const float sy = 1.f - ty;
+
+				const float d0 = tx * ty;
+				const float d1 = sx * ty;
+				const float d2 = sx * sy;
+				const float d3 = tx * sy;
+				
+				// const float picX = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+				// const float picY = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+				const float d = d0*valid0 + d1*valid1 + d2*valid2 + d3*valid3;
+				if(d > 0) {
+					auto& prevF = (component==0 ? vPrev->hor : vPrev->vert);
+					auto& f = (component==0 ? vCurrent->hor : vCurrent->vert);
+					const float picV = (
+						valid0 * d0 * f[y0][x0] +
+						valid1 * d1 * f[y0][x1] +
+						valid2 * d2 * f[y1][x1] +
+						valid3 * d3 * f[y1][x0]
+					) / d;
+
+					const float corr = (
+						valid0 * d0 * (f[y0][x0] - prevF[y0][x0]) +
+						valid1 * d1 * (f[y0][x1] - prevF[y0][x1]) +
+						valid2 * d2 * (f[y1][x1] - prevF[y1][x1]) +
+						valid3 * d3 * (f[y1][x0] - prevF[y1][x0])
+					) / d;
+
+					const float flipV = particle.vel[component] + corr;
+
+					const float flipRatio = 0.f;
+					particle.vel[component] = (1.0 - flipRatio) * picV + flipRatio * flipV;
+
+					// const float flipX = particle.vel[0] + picX - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+					// const float flipY = particle.vel[1] + picY - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+
+					// particle.vel[0] = picX;
+					// particle.vel[1] = picX;
+					// particle.vel[0] = flipX;
+					// particle.vel[1] = flipY;
+					// particle.vel[0] = picX * .1f + flipX * .9f;
+					// particle.vel[1] = picY * .1f + flipY * .9f;
+				}
+			}
 		}
-		// --- <Transfer velicities back to particles/>
+		// --- <Transfer velocities back to particles/>
 
 
 		// --- graphics:
