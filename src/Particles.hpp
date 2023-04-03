@@ -22,12 +22,14 @@ private:
 	const size_t height;
 	const size_t tableSize;
 
+	SpatialHashGrid hashGrid;
+
 public:
 	Particles(const size_t width, const size_t height, const size_t NUM_PARTICLES):
 			width(width),
 			height(height),
-			tableSize(2 * NUM_PARTICLES) {
-			// tableSize(NUM_PARTICLES) {
+			tableSize(2 * NUM_PARTICLES),
+			hashGrid(width, height, tableSize, CELL_SIZE) {
 
 		for(size_t i = 0; i < NUM_PARTICLES; i++) {
 			particles.push_back(
@@ -144,7 +146,19 @@ public:
 
 
 
-	inline std::vector<std::tuple<Particle*, Particle*>> getCollisionsDenseHash() {
+	// inline std::vector<std::tuple<Particle*, Particle*>> getCollisionsDenseHash() {
+		// std::vector<std::tuple<Particle*, Particle*>> collisionPairs;
+	inline std::vector<std::pair<Particle*, Particle*>> getCollisionsDenseHash() {
+		std::vector<std::pair<Particle*, Particle*>> collisionPairs;
+
+		hashGrid.clear();
+
+		hashGrid.addAll(particles);
+
+		
+
+
+		/*
 		std::vector<std::tuple<Particle*, Particle*>> collisionPairs;
 
 		// static const size_t maxNumObjects = particles.size();
@@ -190,54 +204,72 @@ public:
 			cellStart[h]--;
 			cellEntries[cellStart[h]] = i;
 		}
+		*/
 
 		// --- </dense hash grid>
 
-		// std::unordered_set<Particle*> collided;
+		// std::vector<std::tuple<Particle*, Particle*>> collisionPairsTmp;
+		std::vector<std::pair<Particle*, Particle*>> collisionPairsTmp;
 
+		// return collisionPairs;
+
+		std::unordered_set<Particle*> collided;
 		for(size_t ai = 0; ai < particles.size(); ai++) {
-			Particle& a = particles[ai];
+			// Particle& a = particles[ai];
 
-			const float maxDist = 1;
+			collisionPairsTmp = hashGrid.queryCollisions(ai, particles);
 
-			const float xf = std::floorf(a.pos[0]);
-			const float yf = std::floorf(a.pos[1]);
 
-			const float x0 = std::max<float>(xf - maxDist, 0);
-			const float y0 = std::max<float>(yf - maxDist, 0);
+			for(const auto& pair : collisionPairsTmp) {
+				Particle& a = *pair.first;
+				Particle& b = *pair.second;
 
-			const float x1 = std::min<float>(xf + maxDist, width - 1);
-			const float y1 = std::min<float>(yf + maxDist, height - 1);
+				if(collided.find(&b) != collided.end()) continue;
 
-			for(float y = y0; y <= y1; y++) {
-				for(float x = x0; x <= x1; x++) {
-					const size_t h = hash_i(x, y, 0);
-					// const size_t h = hash(bmath::vec2(x, y));
-					const size_t start = cellStart[h];
-					const size_t end = cellStart[h + 1];
-
-					// if(start >= particles.size())
-					// 	continue;
-					for (size_t bi = start; bi < end; bi++) {
-						// if(bi == ai) continue;
-						// if(cellEntries[bi] == ai) continue;
-						// if(collided.find(particles.data() + bi) != collided.end()) continue;
-
-						// Particle& b = particles[bi];
-						Particle& b = particles[cellEntries[bi]];
-
-						// if((b.pos - a.pos).mag() < a.radius() + b.radius()) {
-							collisionPairs.push_back({
-								particles.data() + ai,
-								// particles.data() + bi
-								particles.data() + cellEntries[bi]
-							});
-						// }
-					}
-				}
+				if((a.pos - b.pos).mag() < a.radius() + b.radius())
+					collisionPairs.push_back(pair);
 			}
 
-			// collided.insert(particles.data() + ai);
+			// const float maxDist = 1;
+
+			// const float xf = std::floorf(a.pos[0]);
+			// const float yf = std::floorf(a.pos[1]);
+
+			// const float x0 = std::max<float>(xf - maxDist, 0);
+			// const float y0 = std::max<float>(yf - maxDist, 0);
+
+			// const float x1 = std::min<float>(xf + maxDist, width - 1);
+			// const float y1 = std::min<float>(yf + maxDist, height - 1);
+
+			// for(float y = y0; y <= y1; y++) {
+			// 	for(float x = x0; x <= x1; x++) {
+			// 		const size_t h = hash_i(x, y, 0);
+			// 		// const size_t h = hash(bmath::vec2(x, y));
+			// 		const size_t start = cellStart[h];
+			// 		const size_t end = cellStart[h + 1];
+
+			// 		// if(start >= particles.size())
+			// 		// 	continue;
+			// 		for (size_t bi = start; bi < end; bi++) {
+			// 			// if(bi == ai) continue;
+			// 			// if(cellEntries[bi] == ai) continue;
+			// 			// if(collided.find(particles.data() + bi) != collided.end()) continue;
+
+			// 			// Particle& b = particles[bi];
+			// 			Particle& b = particles[cellEntries[bi]];
+
+			// 			// if((b.pos - a.pos).mag() < a.radius() + b.radius()) {
+			// 				collisionPairs.push_back({
+			// 					particles.data() + ai,
+			// 					// particles.data() + bi
+			// 					particles.data() + cellEntries[bi]
+			// 				});
+			// 			// }
+			// 		}
+			// 	}
+			// }
+
+			collided.insert(particles.data() + ai);
 		}
 
 		
@@ -249,25 +281,30 @@ public:
 			if(p.x() - p.radius() < 0 || p.x() + p.radius() > width) {
 				p.x() = std::max<float>(p.x(), 0 + p.radius());
 				p.x() = std::min<float>(p.x(), width - p.radius());
-				p.vx() *= -1;
-				// p.vx() *= 0;
+				// p.vx() *= -1;
+
+				p.vx() *= 0;
+				// p.vel *= 0;
 			}
 
 			if(p.y() - p.radius() < 0 || p.y() + p.radius() > height) {
 				p.y() = std::max<float>(p.y(), 0 + p.radius());
 				p.y() = std::min<float>(p.y(), height - p.radius());
-				p.vy() *= -1;
-				// p.vy() *= 0;
+				// p.vy() *= -1;
+
+				p.vy() *= 0;
+				// p.vel *= 0;
 			}
 		}
 
 		// std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsPrimitive();
 		// std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsUnorderedMap();
-		std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsDenseHash();
+		// std::vector<std::tuple<Particle*, Particle*>> collisionPairs = getCollisionsDenseHash();
+		std::vector<std::pair<Particle*, Particle*>> collisionPairs = getCollisionsDenseHash();
 
 		// std::cout << "Num pairs collided: " << collisionPairs.size() << "\n";
 
-		for(auto [ap, bp] : collisionPairs) {
+		for(const auto& [ap, bp] : collisionPairs) {
 			Particle& a = *ap;
 			Particle& b = *bp;
 

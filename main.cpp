@@ -37,6 +37,7 @@ int main() {
 	// TODO: no memory leak :)
 	FluidGrid<CELLS_X, CELLS_Y>* vCurrent = new FluidGrid<CELLS_X, CELLS_Y>;
 	FluidGrid<CELLS_X, CELLS_Y>* vNext = new FluidGrid<CELLS_X, CELLS_Y>;
+	// float (*density)[CELLS_X] = new float[CELLS_Y][CELLS_X]{}; // density at the center of each cell
 
 
 	Particles particles(CELLS_X, CELLS_Y, 2000);
@@ -68,7 +69,7 @@ int main() {
 		QueryPerformanceCounter(&currentTime);
 
 		double dt = (currentTime.QuadPart - lastTime.QuadPart) * 1. / freq.QuadPart;
-		dt = std::min<double>(dt, .03);
+		// dt = std::min<double>(dt, .03);
 		lastTime = currentTime;
 
 		std::cout << "dt: " << dt << "s\n";
@@ -107,7 +108,7 @@ int main() {
 
 		particles.updatePos(dt);
 
-		for(size_t i = 0; i < 10; i++)
+		// for(size_t i = 0; i < 10; i++)
 			particles.collide();
 
 		// constexpr size_t PARTICLE_ITERS = 10;
@@ -138,12 +139,14 @@ int main() {
 		}
 
 		for(const Particle p : particles.particles) {
-			size_t x = std::clamp<size_t>((int)p.pos[0], 1, CELLS_X - 2);
-			size_t y = std::clamp<size_t>((int)p.pos[1], 1, CELLS_Y - 2);
+			// size_t x = std::clamp<size_t>((int)p.pos[0], 1, CELLS_X - 2);
+			// size_t y = std::clamp<size_t>((int)p.pos[1], 1, CELLS_Y - 2);
+			size_t x = std::clamp<size_t>((int)p.pos[0], 0, CELLS_X - 1);
+			size_t y = std::clamp<size_t>((int)p.pos[1], 0, CELLS_Y - 1);
 			// size_t x = (size_t)p.pos[0];
 			// size_t y = (size_t)p.pos[1];
-
-			cellTypes[y][x] = CellType::FLUID;
+			if(cellTypes[y][x] != CellType::SOLID)
+				cellTypes[y][x] = CellType::FLUID;
 		}
 
 		// auto num = new size_t[CELLS_Y][CELLS_X]{};
@@ -272,27 +275,41 @@ int main() {
 		}
 		// --- </Mouse Interaction>
 
-		// for(Particle& particle : particles.particles) {
-		// 	const float picX = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
-		// 	const float picY = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+		// --- <Transfer velicities back to particles>
+		for(Particle& particle : particles.particles) {
+			// var nr0 = x0*n + y0;
+			// var nr1 = x1*n + y0;
+			// var nr2 = x1*n + y1;
+			// var nr3 = x0*n + y1;
+			// bool valid0 = cellTypes[ ] != CellType::AIR /*|| this.cellType[nr0 - offset] != AIR_CELL*/ ? 1.0 : 0.0;
+			// bool valid1 = cellTypes[nr1] != CellType::AIR /*|| this.cellType[nr1 - offset] != AIR_CELL*/ ? 1.0 : 0.0;
+			// bool valid2 = cellTypes[nr2] != CellType::AIR /*|| this.cellType[nr2 - offset] != AIR_CELL*/ ? 1.0 : 0.0;
+			// bool valid3 = cellTypes[nr3] != CellType::AIR /*|| this.cellType[nr3 - offset] != AIR_CELL*/ ? 1.0 : 0.0;
+			
+			const float picX = vCurrent->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+			const float picY = vCurrent->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
 
-		// 	const float flipX = particle.vel[0] + picX - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
-		// 	const float flipY = particle.vel[1] + picY - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
+			const float flipX = particle.vel[0] + picX - vNext->sample(Field::VEL_X, particle.pos[0], particle.pos[1]);
+			const float flipY = particle.vel[1] + picY - vNext->sample(Field::VEL_Y, particle.pos[0], particle.pos[1]);
 
-		// 	// particle.vel[0] = picX;
-		// 	// particle.vel[1] = picX;
-		// 	// particle.vel[0] = flipX;
-		// 	// particle.vel[1] = flipY;
-		// 	particle.vel[0] = picX * .1f + flipX * .9f;
-		// 	particle.vel[1] = picY * .1f + flipY * .9f;
-		// }
+			// particle.vel[0] = picX;
+			// particle.vel[1] = picX;
+			// particle.vel[0] = flipX;
+			// particle.vel[1] = flipY;
+			particle.vel[0] = picX * .1f + flipX * .9f;
+			particle.vel[1] = picY * .1f + flipY * .9f;
+		}
+		// --- <Transfer velicities back to particles/>
 
 
 		// --- graphics:
+		win.graphics.clear(0xFF000000);
+		if(false)
 		for(size_t y = 0; y < win.height; y++) {
 			for(size_t x = 0; x < win.width; x++) {
 				const size_t cellX = x * (CELLS_X + 1) / win.width;
 				const size_t cellY = y * (CELLS_Y + 1) / win.height;
+
 				// const size_t cellX = x * CELLS_X / win.width;
 				// const size_t cellY = y * CELLS_Y / win.height;
 
